@@ -4,12 +4,16 @@ indb="$1"
 outdir="$2"
 
 # for chunked mode, we need to know the database size in bytes beforehand
-bytes="$(stat --printf="%s" "$indb")"
+bytes="$(stat -f '%z' "$indb")"
 # set chunk size to 10MiB (needs to be a multiple of the `pragma page_size`!)
-serverChunkSize=$((10 * 1024 * 1024))
+serverChunkSize=$((44 * 1024 * 1024))
 suffixLength=3
 rm -f "$outdir/db.sqlite3"*
-split "$indb" --bytes=$serverChunkSize "$outdir/db.sqlite3." --suffix-length=$suffixLength --numeric-suffixes
+if [[ $(uname -s) == 'Darwin' ]]; then
+    gsplit -b $serverChunkSize -a $suffixLength -d "$indb" "$outdir/db.sqlite3."
+else
+    split -b $serverChunkSize -a $suffixLength -d "$indb" "$outdir/db.sqlite3."
+fi
 
 # set request chunk size to match page size
 requestChunkSize="$(sqlite3 "$indb" 'pragma page_size')"
